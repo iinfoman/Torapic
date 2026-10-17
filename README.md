@@ -14,7 +14,7 @@ npm run typecheck
 npx expo lint
 ```
 
-Haptics, blur and native tabs need a device or simulator; the web build is a quick preview.
+Haptics, blur and native tabs need a device or simulator; the web build is a quick preview. The camera works in Expo Go; with no camera (simulator, denied permission) the shutter still runs a demo scan.
 
 ## Architecture
 
@@ -22,14 +22,15 @@ Haptics, blur and native tabs need a device or simulator; the web build is a qui
 src/
   app/                    Expo Router screens
     (tabs)/index.tsx      Discover: smart search + featured carousels
-    (tabs)/scan.tsx       Scan HUD (demo classifier for now)
+    (tabs)/scan.tsx       Live camera + scan HUD
     (tabs)/stack.tsx      My Daily Stack
     item/[id].tsx         Hero Insight Card screen
   components/             Glass, badges, HeroInsightCard, ScanHud, ...
   data/seed.ts            Bundled offline content (items, benefits, synergies)
   db/schema.ts            Tables, FTS5 index, versioned seeding
   db/repository.ts        Search, insight, alternatives, stack queries
-  vision/classifier.ts    Camera → item id contract
+  vision/classifier.ts    Camera → item id contract (demo classifier for now)
+  vision/identify.ts      Capture → classify → offline lookup → lock or miss
   theme/tokens.ts         Palette, category colors, type, spacing, glow
 tests/                    Runs the real SQL against node:sqlite
 ```
@@ -53,6 +54,6 @@ tests/                    Runs the real SQL against node:sqlite
 
 1. ~~Foundation: tokens, schema, seed content, offline search~~
 2. ~~Hero Insight Card, Power Stack, alternatives, daily stack~~
-3. Camera HUD: `react-native-vision-camera` frame processors driving `ScanHud`
+3. ~~Camera HUD: live `expo-camera` feed, permission flow, torch, freeze-frame lock-on~~
 4. Edge AI: fine-tuned, quantized classifier via `react-native-fast-tflite` (CoreML delegate on iOS) + on-device label OCR; replaces `demoClassifier`
 5. Cloud: background content sync, stockist pricing, deep conversational queries
