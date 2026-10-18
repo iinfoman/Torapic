@@ -21,6 +21,7 @@
     "tests",
     "node_modules",
     "server",
-    "netlify"
+    "worker",
+    "dist"
   ]
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
+import { handleIdentify } from '../server/handler';
 import { DEFAULT_MODEL, identifyPhoto, type MessagesClient } from '../server/identify';
 import { getItem } from '../src/db/repository';
 import { migrate } from '../src/db/schema';
@@ -123,5 +124,39 @@ describe('identifyPhoto (server)', () => {
   test('treats a refusal as no match', async () => {
     const { client } = stub({ stop_reason: 'refusal', content: [] });
     assert.deepEqual(await identifyPhoto(client, jpeg), { itemId: 'none', confidence: 0, seen: '' });
+  });
+});
+
+describe('handleIdentify (HTTP)', () => {
+  const post = (body: unknown) =>
+    new Request('https://torapic.test/api/identify', { method: 'POST', body: JSON.stringify(body) });
+  const client = {
+    beta: {
+      messages: {
+        create: async () => ({
+          stop_reason: 'end_turn',
+          content: [{ type: 'text', text: '{"item_id":"garlic","confidence":"high","seen":"garlic bulb"}' }],
+        }),
+      },
+    },
+  } as unknown as MessagesClient;
+
+  test('returns the match as JSON', async () => {
+    const res = await handleIdentify(post({ image: 'AAAA', mediaType: 'image/jpeg' }), { apiKey: undefined, client });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { itemId: 'garlic', confidence: 0.92, seen: 'garlic bulb' });
+  });
+
+  test('reports a missing API key as not configured', async () => {
+    const res = await handleIdentify(post({ image: 'AAAA', mediaType: 'image/jpeg' }), { apiKey: undefined });
+    assert.equal(res.status, 503);
+  });
+
+  test('rejects bad requests before calling the model', async () => {
+    const cfg = { apiKey: undefined, client };
+    assert.equal((await handleIdentify(new Request('https://t/api/identify'), cfg)).status, 405);
+    assert.equal((await handleIdentify(post({ mediaType: 'image/jpeg' }), cfg)).status, 400);
+    assert.equal((await handleIdentify(post({ image: 'AAAA', mediaType: 'image/gif' }), cfg)).status, 400);
+    assert.equal((await handleIdentify(post({ image: 'A'.repeat(4_000_001), mediaType: 'image/jpeg' }), cfg)).status, 400);
   });
 });

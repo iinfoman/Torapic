@@ -9,12 +9,12 @@ const TIMEOUT_MS = 15_000;
 
 /**
  * The web app calls its own origin. Native builds need EXPO_PUBLIC_API_URL
- * (e.g. https://torapic.netlify.app); without it, scanning stays on-device only.
+ * (e.g. https://torapic.<you>.workers.dev); without it, scanning stays on-device only.
  */
 function endpoint(): string | null {
-  if (Platform.OS === 'web') return '/.netlify/functions/identify';
+  if (Platform.OS === 'web') return '/api/identify';
   const base = process.env.EXPO_PUBLIC_API_URL;
-  return base ? `${base.replace(/\/$/, '')}/.netlify/functions/identify` : null;
+  return base ? `${base.replace(/\/$/, '')}/api/identify` : null;
 }
 
 async function toJpegBase64(uri: string): Promise<string> {

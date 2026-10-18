@@ -16,20 +16,30 @@ npx expo lint
 
 Haptics, blur and native tabs need a device or simulator; the web build is a quick preview.
 
-## Deploy the web app (fastest way onto a phone)
+## Deploy to Cloudflare (fastest way onto a phone)
 
-1. Netlify → **Add new project** → **Import an existing project** → GitHub → this repo. `netlify.toml` already sets the build command, publish folder and the headers the app needs.
-2. **Project configuration → Environment variables**: add `ANTHROPIC_API_KEY` (scope: Functions). Optional: `TORAPIC_VISION_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is ~40× cheaper per scan).
-3. Deploy, open the URL on your phone, allow the camera.
+One Worker serves the web app as static assets and runs the AI endpoint at `/api/identify` (`wrangler.jsonc`, `worker/index.ts`).
+
+**From the dashboard (auto-deploys on every push):** Workers & Pages → **Create** → **Import a repository** → this repo and branch. Build command `npm run build:web`, deploy command `npx wrangler deploy`. Then **Settings → Variables and Secrets**: add secret `ANTHROPIC_API_KEY`. Optional plain variable `TORAPIC_VISION_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is ~40× cheaper per scan).
+
+**From your computer:**
+
+```bash
+npx wrangler login
+npx wrangler secret put ANTHROPIC_API_KEY
+npm run deploy            # builds the web app, deploys the Worker
+```
+
+Open the `https://torapic.<your-subdomain>.workers.dev` URL on your phone and allow the camera. `npm run preview` runs the same Worker locally.
 
 ### How scanning works
 
 | Step | Where | Cost | Needs internet |
 |---|---|---|---|
 | 1. Read the label (OCR) and match the library | On the phone | Free | No |
-| 2. Only if step 1 isn't confident: vision AI looks at the photo | `netlify/functions/identify.mts` → Claude | Roughly $0.02 per cloud scan on Opus 5.5, ~$0.0005 on Haiku 5.5 (estimates) | Yes |
+| 2. Only if step 1 isn't confident: vision AI looks at the photo | `worker/index.ts` → `server/` → Claude | Roughly $0.02 per cloud scan on Opus 5.5, ~$0.0005 on Haiku 5.5 (estimates) | Yes |
 
-Packaged products are usually identified in step 1 and never reach the cloud. Loose produce, herbs and unlabeled items go to step 2. Offline, step 2 is skipped and the on-device result stands. If the AI recognizes something the library doesn't have, the app says what it saw and offers a search. The API key lives only in the Netlify function, never in the app.
+Packaged products are usually identified in step 1 and never reach the cloud. Loose produce, herbs and unlabeled items go to step 2. Offline, step 2 is skipped and the on-device result stands. If the AI recognizes something the library doesn't have, the app says what it saw and offers a search. The API key lives only in the Worker's secrets, never in the app.
 
 ## Run it on your phone (real label scanning)
 
@@ -64,7 +74,8 @@ src/
   vision/cloud-classifier.ts Resizes the photo, calls the identify function
   vision/hybrid.ts        On-device first, cloud only when needed and reachable
 server/identify.ts        Vision prompt + schema locked to library ids (tested)
-netlify/functions/        identify.mts: the serverless endpoint holding the API key
+worker/index.ts           Cloudflare Worker: static app + /api/identify (holds the API key)
+server/handler.ts         Host-agnostic HTTP handler for /api/identify (tested)
   theme/tokens.ts         Palette, category colors, type, spacing, glow
 tests/                    Runs the real SQL against node:sqlite
 ```
@@ -95,4 +106,4 @@ tests/                    Runs the real SQL against node:sqlite
    - Fully offline produce recognition: train a small on-device image model; cloud-identified scans (with user consent) are the natural training data
 5. Cloud: background content sync, stockist pricing, deep conversational queries
 
-For native builds, set `EXPO_PUBLIC_API_URL` (e.g. `https://your-site.netlify.app`) so the app can reach the identify function; without it, native scanning stays on-device only.
+For native builds, set `EXPO_PUBLIC_API_URL` (e.g. `https://torapic.<your-subdomain>.workers.dev`) so the app can reach the identify function; without it, native scanning stays on-device only.

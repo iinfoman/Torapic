@@ -1,0 +1,9 @@
+# expo-sqlite on web needs SharedArrayBuffer, which requires cross-origin isolation.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Permissions-Policy: camera=(self)
+
+# In-browser label reader; not content-hashed, so cache for a week rather than forever.
+/ocr/*
+  Cache-Control: public, max-age=604800

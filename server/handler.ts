@@ -1,21 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-import { DEFAULT_MODEL, identifyPhoto } from '../../server/identify';
+import { DEFAULT_MODEL, identifyPhoto, type MessagesClient } from './identify';
 
 /** ~3 MB of JPEG; the app resizes to 1024px first, so real photos are far smaller. */
 const MAX_BASE64_LENGTH = 4_000_000;
 const MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+export type IdentifyConfig = {
+  apiKey: string | undefined;
+  model?: string;
+  /** Tests inject a stub; production builds a real client from apiKey. */
+  client?: MessagesClient;
+};
+
 /**
  * POST { image: <base64>, mediaType } → { itemId, confidence, seen }.
- * Serves at /.netlify/functions/identify. Needs ANTHROPIC_API_KEY set in the
- * Netlify UI (scope: Functions).
+ * Host-agnostic: takes a web Request, returns a web Response.
  */
-export default async (req: Request) => {
+export async function handleIdentify(req: Request, config: IdentifyConfig): Promise<Response> {
   if (req.method !== 'POST') return Response.json({ error: 'method-not-allowed' }, { status: 405 });
-
-  const apiKey = Netlify.env.get('ANTHROPIC_API_KEY');
-  if (!apiKey) return Response.json({ error: 'not-configured' }, { status: 503 });
+  if (!config.apiKey && !config.client) return Response.json({ error: 'not-configured' }, { status: 503 });
 
   let body: { image?: unknown; mediaType?: unknown };
   try {
@@ -31,14 +35,12 @@ export default async (req: Request) => {
     return Response.json({ error: 'bad-media-type' }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey, timeout: 25_000, maxRetries: 1 });
-  const model = Netlify.env.get('TORAPIC_VISION_MODEL') || DEFAULT_MODEL;
-
+  const client = config.client ?? new Anthropic({ apiKey: config.apiKey, timeout: 25_000, maxRetries: 1 });
   try {
     const match = await identifyPhoto(
       client,
       { base64: image, mediaType: mediaType as 'image/jpeg' | 'image/png' | 'image/webp' },
-      model
+      config.model || DEFAULT_MODEL
     );
     return Response.json(match);
   } catch (error) {
@@ -50,4 +52,4 @@ export default async (req: Request) => {
     console.error('[identify]', error);
     return Response.json({ error: 'internal' }, { status: 500 });
   }
-};
+}
