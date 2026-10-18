@@ -6,6 +6,7 @@
     "@expo/ui": "~58.0.20",
     "@infinitered/react-native-mlkit-core": "3.1.0",
     "@infinitered/react-native-mlkit-text-recognition": "^5.0.1",
+    "@tesseract.js-data/eng": "^1.0.0",
     "expo": "~58.0.14",
     "expo-blur": "~58.0.4",
     "expo-camera": "~58.0.10",
@@ -34,6 +35,8 @@
     "react-native-screens": "~4.30.0",
     "react-native-web": "~0.21.4",
     "react-native-worklets": "0.13.0",
+    "tesseract.js": "^7.0.0",
+    "tesseract.js-core": "^7.0.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -48,10 +51,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
+    "web": "node scripts/copy-ocr-assets.js && expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "build:web": "node scripts/copy-ocr-assets.js && expo export --platform web"
   },
   "private": true
 }

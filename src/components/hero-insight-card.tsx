@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import type { Insight, PowerStack } from '@/data/types';
@@ -114,12 +114,7 @@ export function HeroInsightCard({ insight }: { insight: Insight }) {
       <Animated.View entering={enter(5)} style={styles.section}>
         <Pressable
           accessibilityRole="button"
-          onPress={() =>
-            Alert.alert(
-              'Certified brands',
-              'Verified stockists and third-party-tested brands will appear here once cloud sync is live.'
-            )
-          }
+          onPress={() => notify('Certified brands', BRANDS_COMING_SOON)}
           style={({ pressed }) => [styles.shop, pressed && { opacity: 0.8 }]}>
           <Text style={[Type.bodyStrong, { color: Palette.text }]}>Find Certified High-Potency Brands</Text>
           <Text style={[Type.caption, { color: Palette.textFaint }]}>Third-party tested · near you</Text>
@@ -131,6 +126,15 @@ export function HeroInsightCard({ insight }: { insight: Insight }) {
       </Animated.View>
     </View>
   );
+}
+
+const BRANDS_COMING_SOON =
+  'Verified stockists and third-party-tested brands will appear here once cloud sync is live.';
+
+/** Alert.alert is a no-op on web, so fall back to the browser dialog there. */
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
+  else Alert.alert(title, message);
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {

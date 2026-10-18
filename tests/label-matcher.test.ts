@@ -69,3 +69,16 @@ describe('matchLabel', () => {
     assert.deepEqual(matchLabel([{ text: '   ', height: 30 }], targets), []);
   });
 });
+
+test('matches real Tesseract output from a rendered label', () => {
+  // Captured from tesseract.js (sparse-text mode) on a 640×480 test label.
+  const lines = [
+    { text: "NATURE'S PURE", height: 15 },
+    { text: 'BERBERINE', height: 44 },
+    { text: '500 mg - Supports healthy glucose', height: 21 },
+    { text: 'Dietary Supplement - 60 Capsules', height: 21 },
+  ];
+  const [best] = matchLabel(lines, targets);
+  assert.equal(best.itemId, 'berberine');
+  assert.ok(best.confidence >= MIN_CONFIDENCE);
+});

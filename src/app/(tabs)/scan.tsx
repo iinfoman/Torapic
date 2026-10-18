@@ -71,6 +71,11 @@ export default function ScanScreen() {
   // Real label reading needs a live photo and the native text recognizer (dev/store builds).
   const realAI = live && !!ocrClassifier;
 
+  // Load the label reader while the user is still aiming.
+  useEffect(() => {
+    if (realAI) ocrClassifier?.prepare?.().catch((e) => console.warn('[ocr] warm-up failed', e));
+  }, [realAI]);
+
   const capture = async () => {
     if (!camera.current || !cameraReady) return undefined;
     const photo = await camera.current.takePictureAsync({ quality: 0.6, shutterSound: false });

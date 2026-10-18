@@ -11,6 +11,8 @@ export type Classification = { itemId: string; confidence: number };
 export interface VisionClassifier {
   /** Top-k matches for one camera frame or photo, best first. */
   classify(input: { uri: string } | { frame: unknown }): Promise<Classification[]>;
+  /** Optional warm-up (e.g. loading a model) so the first scan is fast. */
+  prepare?(): Promise<void>;
 }
 
 /** Below this, the HUD asks the user to reframe instead of guessing. */
