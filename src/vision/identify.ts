@@ -52,6 +52,6 @@ export async function identify({
 
 export const MISS_COPY: Record<ScanMiss, string> = {
   'capture-failed': 'Camera didn’t capture. Try again',
-  'low-confidence': 'Couldn’t lock on. Move closer and fill the ring',
+  'low-confidence': 'No match. Fill the ring with the product name, or type it instead',
   'not-in-library': 'Recognized, but not in your offline library yet',
 };

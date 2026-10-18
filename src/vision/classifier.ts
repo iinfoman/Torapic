@@ -17,8 +17,8 @@ export interface VisionClassifier {
 export const MIN_CONFIDENCE = 0.6;
 
 /**
- * Stand-in until the on-device TFLite model ships: returns a random library
- * item so the scan → insight flow can be built and demoed end to end.
+ * Used where the native recognizer is unavailable (Expo Go, web, no camera):
+ * returns a random library item so the scan → insight flow can be demoed.
  */
 export const demoClassifier: VisionClassifier = {
   async classify() {

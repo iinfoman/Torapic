@@ -15,6 +15,7 @@ import { getItem } from '@/db/repository';
 import { CategoryThemes, Palette, Radius, Space, Type, WebTabInset, glow } from '@/theme/tokens';
 import { demoClassifier } from '@/vision/classifier';
 import { MISS_COPY, identify, type ScanMiss } from '@/vision/identify';
+import { ocrClassifier } from '@/vision/ocr-classifier';
 
 const STEPS = ['Capturing…', 'Reading bio-active profile…', 'Matching offline library…'];
 const IDLE_COLOR = '#7FE7FF';
@@ -67,6 +68,8 @@ export default function ScanScreen() {
   );
 
   const live = !!permission?.granted && focused && !cameraError;
+  // Real label reading needs a live photo and the native text recognizer (dev/store builds).
+  const realAI = live && !!ocrClassifier;
 
   const capture = async () => {
     if (!camera.current || !cameraReady) return undefined;
@@ -92,7 +95,7 @@ export default function ScanScreen() {
       identify({
         // Without a camera (simulator, denied permission) the demo still runs end to end.
         capture: live ? capture : async () => 'demo://no-camera',
-        classifier: demoClassifier,
+        classifier: realAI ? ocrClassifier! : demoClassifier,
         lookup: (id) => getItem(db, id),
       }),
       wait(MIN_SCAN_MS),
@@ -210,7 +213,9 @@ export default function ScanScreen() {
             </Text>
           </Pressable>
           <Text style={[Type.caption, styles.note]}>
-            Preview AI: matches are random until the on-device model ships
+            {realAI
+              ? 'Reads product labels on-device. Loose produce recognition is coming next'
+              : 'Demo mode: matches are random. Install the Torapic dev build for real label reading'}
           </Text>
         </View>
       </SafeAreaView>

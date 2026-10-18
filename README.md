@@ -14,7 +14,20 @@ npm run typecheck
 npx expo lint
 ```
 
-Haptics, blur and native tabs need a device or simulator; the web build is a quick preview. The camera works in Expo Go; with no camera (simulator, denied permission) the shutter still runs a demo scan.
+Haptics, blur and native tabs need a device or simulator; the web build is a quick preview.
+
+## Run it on your phone (real label scanning)
+
+Label reading uses Google ML Kit on-device, which is native code Expo Go doesn't include. Install a development build once; after that, code changes reload instantly like Expo Go.
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest build --profile development --platform android   # or ios
+# install the build from the link EAS prints, then:
+npx expo start
+```
+
+iOS internal builds need your device registered first: `npx eas-cli@latest device:create`. In Expo Go and on web, scanning falls back to a clearly labelled demo that picks random items.
 
 ## Architecture
 
@@ -31,6 +44,8 @@ src/
   db/repository.ts        Search, insight, alternatives, stack queries
   vision/classifier.ts    Camera → item id contract (demo classifier for now)
   vision/identify.ts      Capture → classify → offline lookup → lock or miss
+  vision/ocr-classifier.ts On-device ML Kit label reading (dev/store builds)
+  vision/label-matcher.ts Finds library items in label text, weighted by text size
   theme/tokens.ts         Palette, category colors, type, spacing, glow
 tests/                    Runs the real SQL against node:sqlite
 ```
@@ -55,5 +70,7 @@ tests/                    Runs the real SQL against node:sqlite
 1. ~~Foundation: tokens, schema, seed content, offline search~~
 2. ~~Hero Insight Card, Power Stack, alternatives, daily stack~~
 3. ~~Camera HUD: live `expo-camera` feed, permission flow, torch, freeze-frame lock-on~~
-4. Edge AI: fine-tuned, quantized classifier via `react-native-fast-tflite` (CoreML delegate on iOS) + on-device label OCR; replaces `demoClassifier`
+4. Edge AI
+   - ~~On-device label reading (ML Kit text recognition) for supplement bottles and packaged spices~~
+   - Loose produce and herbs: train a quantized image classifier on our item ids and load it as a custom model (e.g. `@infinitered/react-native-mlkit-image-labeling`); it plugs in behind the same `VisionClassifier` contract
 5. Cloud: background content sync, stockist pricing, deep conversational queries
