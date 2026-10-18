@@ -6,7 +6,7 @@ export type ScanMiss = 'capture-failed' | 'low-confidence' | 'not-in-library';
 
 export type ScanOutcome =
   | { kind: 'locked'; item: ItemRecord; confidence: number }
-  | { kind: 'miss'; reason: ScanMiss };
+  | { kind: 'miss'; reason: ScanMiss; seen?: string };
 
 /**
  * One scan, start to finish: capture a photo, classify it on-device, and
@@ -47,7 +47,8 @@ export async function identify({
     const item = await lookup(match.itemId);
     if (item) return { kind: 'locked', item, confidence: match.confidence };
   }
-  return { kind: 'miss', reason: 'not-in-library' };
+  const seen = confident.find((m) => m.label)?.label;
+  return seen ? { kind: 'miss', reason: 'not-in-library', seen } : { kind: 'miss', reason: 'not-in-library' };
 }
 
 export const MISS_COPY: Record<ScanMiss, string> = {

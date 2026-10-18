@@ -6,7 +6,12 @@ import { ITEMS } from '@/data/seed';
  * user sees is then read from the local database, so the model can be swapped
  * or retrained without touching content.
  */
-export type Classification = { itemId: string; confidence: number };
+export type Classification = {
+  itemId: string;
+  confidence: number;
+  /** What was recognized, in words; lets the HUD name things the library doesn't have. */
+  label?: string;
+};
 
 export interface VisionClassifier {
   /** Top-k matches for one camera frame or photo, best first. */

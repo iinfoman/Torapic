@@ -16,6 +16,21 @@ npx expo lint
 
 Haptics, blur and native tabs need a device or simulator; the web build is a quick preview.
 
+## Deploy the web app (fastest way onto a phone)
+
+1. Netlify → **Add new project** → **Import an existing project** → GitHub → this repo. `netlify.toml` already sets the build command, publish folder and the headers the app needs.
+2. **Project configuration → Environment variables**: add `ANTHROPIC_API_KEY` (scope: Functions). Optional: `TORAPIC_VISION_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is ~40× cheaper per scan).
+3. Deploy, open the URL on your phone, allow the camera.
+
+### How scanning works
+
+| Step | Where | Cost | Needs internet |
+|---|---|---|---|
+| 1. Read the label (OCR) and match the library | On the phone | Free | No |
+| 2. Only if step 1 isn't confident: vision AI looks at the photo | `netlify/functions/identify.mts` → Claude | Roughly $0.02 per cloud scan on Opus 5.5, ~$0.0005 on Haiku 5.5 (estimates) | Yes |
+
+Packaged products are usually identified in step 1 and never reach the cloud. Loose produce, herbs and unlabeled items go to step 2. Offline, step 2 is skipped and the on-device result stands. If the AI recognizes something the library doesn't have, the app says what it saw and offers a search. The API key lives only in the Netlify function, never in the app.
+
 ## Run it on your phone (real label scanning)
 
 Label reading uses Google ML Kit on-device, which is native code Expo Go doesn't include. Install a development build once; after that, code changes reload instantly like Expo Go.
@@ -46,6 +61,10 @@ src/
   vision/identify.ts      Capture → classify → offline lookup → lock or miss
   vision/ocr-classifier.ts On-device ML Kit label reading (dev/store builds)
   vision/label-matcher.ts Finds library items in label text, weighted by text size
+  vision/cloud-classifier.ts Resizes the photo, calls the identify function
+  vision/hybrid.ts        On-device first, cloud only when needed and reachable
+server/identify.ts        Vision prompt + schema locked to library ids (tested)
+netlify/functions/        identify.mts: the serverless endpoint holding the API key
   theme/tokens.ts         Palette, category colors, type, spacing, glow
 tests/                    Runs the real SQL against node:sqlite
 ```
@@ -72,5 +91,8 @@ tests/                    Runs the real SQL against node:sqlite
 3. ~~Camera HUD: live `expo-camera` feed, permission flow, torch, freeze-frame lock-on~~
 4. Edge AI
    - ~~On-device label reading (ML Kit text recognition) for supplement bottles and packaged spices~~
-   - Loose produce and herbs: train a quantized image classifier on our item ids and load it as a custom model (e.g. `@infinitered/react-native-mlkit-image-labeling`); it plugs in behind the same `VisionClassifier` contract
+   - ~~Loose produce, herbs and anything unlabeled: cloud vision AI (Claude) behind a serverless function, used only when on-device reading isn't confident~~
+   - Fully offline produce recognition: train a small on-device image model; cloud-identified scans (with user consent) are the natural training data
 5. Cloud: background content sync, stockist pricing, deep conversational queries
+
+For native builds, set `EXPO_PUBLIC_API_URL` (e.g. `https://your-site.netlify.app`) so the app can reach the identify function; without it, native scanning stays on-device only.

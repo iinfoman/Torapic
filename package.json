@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@expo/ui": "~58.0.20",
     "@infinitered/react-native-mlkit-core": "3.1.0",
     "@infinitered/react-native-mlkit-text-recognition": "^5.0.1",
@@ -17,6 +18,7 @@
     "expo-glass-effect": "~58.0.4",
     "expo-haptics": "~58.0.7",
     "expo-image": "~58.0.15",
+    "expo-image-manipulator": "~58.0.14",
     "expo-linear-gradient": "~58.0.3",
     "expo-linking": "~58.0.13",
     "expo-router": "~58.0.23",
@@ -40,6 +42,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.0.2",
     "@types/node": "^22.20.5",
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
@@ -53,7 +56,7 @@
     "ios": "expo start --ios",
     "web": "node scripts/copy-ocr-assets.js && expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests && tsc -p netlify",
     "test": "tsx --test tests/*.test.ts",
     "build:web": "node scripts/copy-ocr-assets.js && expo export --platform web"
   },

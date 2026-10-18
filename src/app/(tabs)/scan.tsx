@@ -15,6 +15,8 @@ import { getItem } from '@/db/repository';
 import { CategoryThemes, Palette, Radius, Space, Type, WebTabInset, glow } from '@/theme/tokens';
 import { demoClassifier } from '@/vision/classifier';
 import { MISS_COPY, identify, type ScanMiss } from '@/vision/identify';
+import { cloudClassifier } from '@/vision/cloud-classifier';
+import { hybridClassifier } from '@/vision/hybrid';
 import { ocrClassifier } from '@/vision/ocr-classifier';
 
 const STEPS = ['Capturing…', 'Reading bio-active profile…', 'Matching offline library…'];
@@ -27,7 +29,10 @@ type Phase =
   | { kind: 'idle' }
   | { kind: 'scanning'; step: number }
   | { kind: 'locked'; item: ItemRecord }
-  | { kind: 'miss'; reason: ScanMiss };
+  | { kind: 'miss'; reason: ScanMiss; seen?: string };
+
+/** On-device label reading first; cloud vision AI when that isn't confident and a connection exists. */
+const realClassifier = hybridClassifier(ocrClassifier, cloudClassifier);
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -69,11 +74,11 @@ export default function ScanScreen() {
 
   const live = !!permission?.granted && focused && !cameraError;
   // Real label reading needs a live photo and the native text recognizer (dev/store builds).
-  const realAI = live && !!ocrClassifier;
+  const realAI = live && !!realClassifier;
 
   // Load the label reader while the user is still aiming.
   useEffect(() => {
-    if (realAI) ocrClassifier?.prepare?.().catch((e) => console.warn('[ocr] warm-up failed', e));
+    if (realAI) realClassifier?.prepare?.().catch((e) => console.warn('[scan] warm-up failed', e));
   }, [realAI]);
 
   const capture = async () => {
@@ -100,7 +105,7 @@ export default function ScanScreen() {
       identify({
         // Without a camera (simulator, denied permission) the demo still runs end to end.
         capture: live ? capture : async () => 'demo://no-camera',
-        classifier: realAI ? ocrClassifier! : demoClassifier,
+        classifier: realAI ? realClassifier! : demoClassifier,
         lookup: (id) => getItem(db, id),
       }),
       wait(MIN_SCAN_MS),
@@ -108,9 +113,10 @@ export default function ScanScreen() {
     clearTimers();
 
     if (outcome.kind === 'miss') {
-      setPhase({ kind: 'miss', reason: outcome.reason });
+      setPhase({ kind: 'miss', reason: outcome.reason, seen: outcome.seen });
       haptic(Haptics.NotificationFeedbackType.Error);
-      later(2200, reset);
+      // Leave time to tap "Search" when we know what it is.
+      later(outcome.seen ? 6000 : 2200, reset);
       return;
     }
 
@@ -136,7 +142,9 @@ export default function ScanScreen() {
         ? STEPS[phase.step]
         : phase.kind === 'locked'
           ? `Locked: ${phase.item.name}`
-          : MISS_COPY[phase.reason];
+          : phase.seen
+            ? `Looks like ${phase.seen}. Not in your library yet`
+            : MISS_COPY[phase.reason];
 
   return (
     <View style={styles.screen}>
@@ -194,6 +202,19 @@ export default function ScanScreen() {
                 style={[Type.bodyStrong, styles.status, { color: phase.kind === 'idle' ? Palette.text : color }]}>
                 {status}
               </Animated.Text>
+              {phase.kind === 'miss' && phase.seen ? (
+                <Pressable
+                  onPress={() => {
+                    const q = phase.seen!;
+                    reset();
+                    router.navigate({ pathname: '/', params: { q } });
+                  }}
+                  accessibilityRole="button">
+                  <Glass style={styles.searchChip}>
+                    <Text style={[Type.bodyStrong, { color: Palette.text }]}>Search “{phase.seen}”</Text>
+                  </Glass>
+                </Pressable>
+              ) : null}
             </>
           )}
         </View>
@@ -218,9 +239,11 @@ export default function ScanScreen() {
             </Text>
           </Pressable>
           <Text style={[Type.caption, styles.note]}>
-            {realAI
-              ? 'Reads product labels on-device. Loose produce recognition is coming next'
-              : 'Demo mode: matches are random. Install the Torapic dev build for real label reading'}
+            {!realAI
+              ? 'Demo mode: matches are random. Use the web app or the Torapic dev build for real scanning'
+              : cloudClassifier
+                ? 'Labels read on-device · produce & anything else via AI when online'
+                : 'Reads product labels on-device'}
           </Text>
         </View>
       </SafeAreaView>
@@ -296,6 +319,7 @@ const styles = StyleSheet.create({
   },
   shutterInner: { width: 60, height: 60, borderRadius: 30, borderWidth: 3, backgroundColor: 'rgba(255,255,255,0.9)' },
   note: { color: Palette.textFaint, textAlign: 'center' },
+  searchChip: { paddingHorizontal: Space.lg, paddingVertical: Space.sm + 2, borderRadius: Radius.pill },
   permissionWrap: { alignSelf: 'stretch' },
   permission: { padding: Space.xl, gap: Space.lg, alignItems: 'center', borderRadius: Radius.xl },
   permissionButton: {

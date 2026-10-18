@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useDeferredValue, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -23,7 +24,14 @@ const QUICK_GOALS: { label: string; category: Category }[] = [
 const CATEGORIES: Category[] = ['metabolic', 'longevity', 'protection'];
 
 export default function DiscoverScreen() {
-  const [query, setQuery] = useState('');
+  // The Scan tab hands over what it saw (?q=) when it isn't in the library.
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const [query, setQuery] = useState(q ?? '');
+  const [handedOver, setHandedOver] = useState(q);
+  if (q !== handedOver) {
+    setHandedOver(q);
+    if (q) setQuery(q);
+  }
   const deferred = useDeferredValue(query.trim());
 
   return (
