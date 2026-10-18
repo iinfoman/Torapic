@@ -20,14 +20,17 @@ Haptics, blur and native tabs need a device or simulator; the web build is a qui
 
 One Worker serves the web app as static assets and runs the AI endpoint at `/api/identify` (`wrangler.jsonc`, `worker/index.ts`).
 
-**From the dashboard (auto-deploys on every push):** Workers & Pages → **Create** → **Import a repository** → this repo and branch. Build command `npm run build:web`, deploy command `npx wrangler deploy`. Then **Settings → Variables and Secrets**: add secret `ANTHROPIC_API_KEY`. Optional plain variable `TORAPIC_VISION_MODEL` (default `claude-opus-5-5`; `claude-haiku-5-5` is ~40× cheaper per scan).
+**From the dashboard (auto-deploys on every push):** Workers & Pages → **Create** → **Import a repository** → this repo and branch. Build command `npm run build:web`, deploy command `npx wrangler deploy`. That's it: AI scanning uses **Cloudflare Workers AI** (Llama 3.2 Vision) through the Worker's `AI` binding, free within Cloudflare's daily allowance of 10,000 Neurons, with no API key.
+
+Optional upgrade: add secret `ANTHROPIC_API_KEY` (**Settings → Variables and Secrets**) and scans switch to Claude, which is generally more accurate on hard photos. `TORAPIC_VISION_MODEL` picks the Claude model (default `claude-opus-5-5`; `claude-haiku-5-5` is ~40× cheaper per scan).
 
 **From your computer:**
 
 ```bash
 npx wrangler login
-npx wrangler secret put ANTHROPIC_API_KEY
 npm run deploy            # builds the web app, deploys the Worker
+# optional, switches scans from free Workers AI to Claude:
+npx wrangler secret put ANTHROPIC_API_KEY
 ```
 
 Open the `https://torapic.<your-subdomain>.workers.dev` URL on your phone and allow the camera. `npm run preview` runs the same Worker locally.
@@ -37,9 +40,9 @@ Open the `https://torapic.<your-subdomain>.workers.dev` URL on your phone and al
 | Step | Where | Cost | Needs internet |
 |---|---|---|---|
 | 1. Read the label (OCR) and match the library | On the phone | Free | No |
-| 2. Only if step 1 isn't confident: vision AI looks at the photo | `worker/index.ts` → `server/` → Claude | Roughly $0.02 per cloud scan on Opus 5.5, ~$0.0005 on Haiku 5.5 (estimates) | Yes |
+| 2. Only if step 1 isn't confident: vision AI looks at the photo | `worker/index.ts` → `server/` → Workers AI (default) or Claude (if a key is set) | Workers AI: free within Cloudflare's daily allowance. Claude: roughly $0.02/scan on Opus 5.5, ~$0.0005 on Haiku 5.5 (estimates) | Yes |
 
-Packaged products are usually identified in step 1 and never reach the cloud. Loose produce, herbs and unlabeled items go to step 2. Offline, step 2 is skipped and the on-device result stands. If the AI recognizes something the library doesn't have, the app says what it saw and offers a search. The API key lives only in the Worker's secrets, never in the app.
+Packaged products are usually identified in step 1 and never reach the cloud. Loose produce, herbs and unlabeled items go to step 2. Offline, step 2 is skipped and the on-device result stands. If the AI recognizes something the library doesn't have, the app says what it saw and offers a search. No key ships in the app: Workers AI needs none, and an optional Claude key lives only in the Worker's secrets.
 
 ## Run it on your phone (real label scanning)
 
@@ -76,6 +79,7 @@ src/
 server/identify.ts        Vision prompt + schema locked to library ids (tested)
 worker/index.ts           Cloudflare Worker: static app + /api/identify (holds the API key)
 server/handler.ts         Host-agnostic HTTP handler for /api/identify (tested)
+server/workers-ai.ts      Free vision path: Llama 3.2 Vision on Workers AI, replies validated against the library
   theme/tokens.ts         Palette, category colors, type, spacing, glow
 tests/                    Runs the real SQL against node:sqlite
 ```

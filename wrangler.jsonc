@@ -13,5 +13,7 @@
     // Only the API runs Worker code; the app itself is served as static files.
     "run_worker_first": ["/api/*"]
   },
+  // Free vision model for scans (Llama 3.2 Vision); no API key needed.
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
 }
